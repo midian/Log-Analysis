@@ -4,7 +4,7 @@ The objective of this project is create an analysis of a specific database.
 
 ## How to use it?
 
-First of all, you need to have Python 3.x intalled. You can find it [here.]("https://www.python.org/downloads/")
+First of all, you need to have Python 3.x intalled. You can find it [here.](https://www.python.org/downloads/)
 After, you have to run:
 ```
 python3 news_report_tool.py
