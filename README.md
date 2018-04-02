@@ -17,7 +17,7 @@ The analysis was create to answer this question:
 
 To reach the objetive of this project, *PostgreSQL* and *Python3*, both of them were installed in a virtual machine using *Virtual Box* with *Vagrant*.
 
-## Configuring the environmenxt.
+## Configuring the environment.
 *All files needed are found on root folder of this project.*
 
 First of all, you need to install *VirtualBox*. You can find it [here.](https://www.virtualbox.org/wiki/Download_Old_Builds_5_1)
