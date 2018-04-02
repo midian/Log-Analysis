@@ -1,7 +1,6 @@
-#!/usr/bin/env python3Example
+#!/usr/bin/env python3
 
 import psycopg2
-import bleach
 
 DBNAME = "news"
 
@@ -15,80 +14,93 @@ DBNAME = "news"
 """
 
 
-# Returns how many views and
-# the name of the viewed article.
 def get_three_most_popular_articles():
-    connection = get_db_connection()
-    cursor = connection.cursor()
+    """
+    Returns how many views and
+    the name of the viewed article.
+    """
+    query = """
+            SELECT COUNT(l.id), a.title
+            FROM log AS l
+            JOIN articles AS a ON l.path = '/article/' || a.slug
+            WHERE status = '200 OK'
+            AND l.path LIKE '/article/%'
+            GROUP BY a.title
+            ORDER BY COUNT(l.id) DESC
+            limit 3
+            """
 
-    query = "  select count(l.id), a.title "
-    query += " from log as l "
-    query += " join articles as a on l.path like '%' || a.slug "
-    query += " where status = '200 OK' "
-    query += " and path like '/article/%' "
-    query += " group by a.title "
-    query += " order by count(l.id) desc "
-    query += " limit 3 "
-
-    cursor.execute(query)
-    popular_articles = cursor.fetchall()
-    connection.close()
-
-    return popular_articles
+    return execute_query_statement(query)
 
 
-# Returns how many views and
-# the name of the author that
-# publish the viewed articles.
 def get_most_popular_authors():
-    connection = get_db_connection()
-    cursor = connection.cursor()
+    """
+    Returns how many views and
+    the name of the author that
+    publish the viewed articles.
+    """
+    query = """
+            SELECT COUNT(l.id), au.name
+            FROM log AS l
+            JOIN articles AS a ON l.path LIKE '%' || a.slug
+            JOIN authors AS au ON au.id = a.author
+            WHERE l.status = '200 OK'
+            AND l.path LIKE '/article/%'
+            GROUP BY au.name
+            ORDER BY COUNT(l.id) DESC
+            """
 
-    query = " select count(l.id), au.name "
-    query += " from log as l "
-    query += " join articles as a on l.path like '%' || a.slug "
-    query += " join authors as au on au.id = a.author "
-    query += " where l.status = '200 OK' "
-    query += " and l.path like '/article/%' "
-    query += " group by au.name "
-    query += " order by count(l.id) desc "
-
-    cursor.execute(query)
-    popular_authors = cursor.fetchall()
-    connection.close()
-
-    return popular_authors
+    return execute_query_statement(query)
 
 
-# Returns the day and the percentage of the errors
-# happened in that day.
 def get_days_more_than_one_percent_errors():
+    """
+    Returns the day and the percentage of the errors
+    happened in that day.
+    """
+    query = """
+            SELECT TO_CHAR(l.time, 'Month DD, YYYY'),
+            ROUND(CAST(le.log_errors *
+                       CAST(100 AS FLOAT) / COUNT(l.id)
+                  AS NUMERIC), 2) AS percentual
+                   FROM (
+                     SELECT count(l2.id) AS log_errors,
+                     TO_CHAR(l2.time, 'Month DD, YYYY') AS DATE
+                     FROM log AS l2
+                     WHERE l2.status != '200 OK'
+                     GROUP BY TO_CHAR(l2.time, 'Month DD, YYYY')
+                   ) AS le,
+            log AS l
+            WHERE le.date = TO_CHAR(l.time, 'Month DD, YYYY')
+            GROUP BY le.log_errors, TO_CHAR(l.time, 'Month DD, YYYY')
+            HAVING le.log_errors * 100 / COUNT(l.id) > 1
+            ORDER BY percentual DESC, TO_CHAR(l.time, 'Month DD, YYYY')
+            """
+
+    return execute_query_statement(query)
+
+
+def execute_query_statement(query):
+    """
+    Execute and return the result of the
+    query statement.
+    """
     connection = get_db_connection()
     cursor = connection.cursor()
 
-    query = " select to_char(l.time, 'Month DD, YYYY'), "
-    query += " le.log_errors * 100 / count(l.id) as percentual "
-    query += "        from ( "
-    query += "          select count(l2.id) as log_errors, "
-    query += "          to_char(l2.time, 'Month DD, YYYY') as date "
-    query += "          from log as l2 "
-    query += "          where l2.status != '200 OK' "
-    query += "          group by to_char(l2.time, 'Month DD, YYYY') "
-    query += "        ) as le,  "
-    query += " log as l "
-    query += " where le.date = to_char(l.time, 'Month DD, YYYY')   "
-    query += " group by le.log_errors, to_char(l.time, 'Month DD, YYYY') "
-    query += " having le.log_errors * 100 / count(l.id) > 1 "
-    query += " order by percentual desc, to_char(l.time, 'Month DD, YYYY')  "
-
     cursor.execute(query)
 
-    days_more_than_one_percent_errors = cursor.fetchall()
+    result = cursor.fetchall()
     connection.close
 
-    return days_more_than_one_percent_errors
+    return result
 
 
-# Return a db connection.
 def get_db_connection():
-    return psycopg2.connect(database=DBNAME)
+    """
+    Return a db connection.
+    """
+    try:
+        return psycopg2.connect(database=DBNAME)
+    except Exception:
+        print("Error to connect to the database.")
